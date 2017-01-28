@@ -1,0 +1,133 @@
+<?php
+## Active Directory LDAP
+## Bind (username password)
+function auth_ad_ldap($lin_usr,$lin_pwd){
+	$connect = ldap_connect("ldap://adserver.primpel.com")
+         or exit(">>Could not connect to LDAP server<<");
+
+	if ($bind = @ldap_bind($connect, $lin_usr, $lin_pwd)){
+		return true;
+	} else {
+		return false;
+	}
+	ldap_unbind($connect);
+	
+}
+
+# mySQL Auth 
+#
+function auth_mysql($lin_usr,$lin_pwd){
+	$username = $lin_usr;
+	$password = $lin_pwd;
+if(!$GLOBALS['system_mysql_connection']){
+		echo "Failed to connect to the DB";
+	} else {
+		$login = mysqli_query($GLOBALS['system_mysql_connection'], "SELECT `username` FROM `users` WHERE (username='".clean_username_input($username)."' or email='".clean_username_input($username)."')  and user_password='".$password."' and user_status=1;");
+		if (mysqli_num_rows($login) > 0) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+}
+
+
+# cleaning DATA
+function clean_username_input($input){
+	$pattern = '/[^A-Za-z0-9\-._@]/';
+	$replacement = ' ';
+	return preg_replace($pattern, $replacement, $input);
+}
+function clean_money_input($input){
+	$pattern = '/[^0-9\-+.$,]/';
+	$replacement = ' ';
+	return preg_replace($pattern, $replacement, $input);
+}
+function clean_file_input($input){
+	$pattern = '/[^A-Za-z0-9\-._\/\\\\]/';
+	$replacement = ' ';
+	return preg_replace($pattern, $replacement, $input);
+}
+
+
+#working with files.
+
+#CSV
+function csv_to_array($file,$return_type){
+	#how to use : print_r(csv_to_array($navfile,'a')); will out put a multi array
+	
+	# Example
+	/*
+	foreach (csv_to_array($navfile,'f') as $row){
+		foreach (explode(',',$row) as $field){
+			echo " ".$field." | ";
+		}
+		echo "<br/>";
+	}
+	*/
+	
+	$row_data = array();
+	$array_data = array();
+	$row = 0;
+	if (($read_file = fopen($file, "r")) !== FALSE) {
+			if($return_type === "a"){
+				while (($read_field = fgetcsv($read_file, 1000, ",")) !== FALSE){
+					$array_data[$row] = $read_field;
+					$row++;
+				}
+				fclose($read_file);
+			} else if ($return_type === "f"){
+				while (($read_list = fgetcsv($read_file, 1000, ",")) !== FALSE){
+					$row_data[] = implode(',',$read_list);
+					$row++;
+				}
+				fclose($read_file);
+			} else if ($return_type === "r"){
+				while (($read_list = fgetcsv($read_file, 1000, ",")) !== FALSE){
+					$row++;
+				}
+				fclose($read_file);
+			} else {
+				return "Cannot open file : ".$file." <br/>";
+				break;
+			}
+	}
+	if($return_type === "f"){
+		return $row_data; // retuns an array of the rows in comma seperated arrays Array ( [0] => TESTING,1,2 [1] => TESTING,3,4 )
+	} else if ($return_type === "r"){
+		return $row; // num of rows
+	} else if ($return_type === "a"){
+		return $array_data;
+	}
+}
+
+### MySQL Tools ###
+
+#returns select statment as an array with keys
+# EXAMPLE  print_r(system_mysqli_select("SELECT * FROM users;"));
+function system_mysqli_select($select_sql){
+	if (!$GLOBALS['system_mysql_connection']) {
+		echo "Error Connecting to Database. Please Try again later.";
+	} else{
+		$sql_result = array();
+		$sql_row = 0;
+		$result = mysqli_query($GLOBALS['system_mysql_connection'], $select_sql);
+		if (mysqli_num_rows($result) > 0) {
+			while($row = mysqli_fetch_assoc($result)) {
+				
+				foreach ($row as $key => $value){
+					$sql_result[$sql_row][$key] = $value;
+				}
+				$sql_row++;
+			}
+		} else {
+			echo "0 results";
+		}
+	}
+	return $sql_result;
+	unset($select_sql);
+	unset($sql_result);
+	mysqli_free_result($result);
+	mysqli_close($GLOBALS['system_mysql_connection']);
+}
+?>
